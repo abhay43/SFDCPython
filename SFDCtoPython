@@ -1,0 +1,45 @@
+import requests
+import base64
+import json
+import pandas as pd
+try:
+    params={
+        "grant_type" :"password",
+        "client_id" :"MyClientCI",
+        "client_secret": "MyClient_Secret",
+        "username" : "UserName",
+        "password":"PassWithToken"
+    }
+    r = requests.post("https://login.salesforce.com/services/oauth2/token",params=params);
+    access_token = r.json().get('access_token')
+    instance_url = r.json().get('instance_url')    
+    def call_Connector(action, parameaters={}, method='get', data={}):
+        header ={
+            'Content_type' : 'application/json',
+            'Accept_Encoding' : 'gzip',
+            'Authorization' : 'Bearer '+access_token
+        }
+        if method=='get':
+            r = requests.request(method,instance_url+action, headers =header, params=parameaters, timeout=120)
+            return r.json()
+    
+    mydef = json.dumps(call_Connector('/services/data/v45.0/query/',{'q':'SELECT Id, Name from account'}), indent=2)    
+except requests.exceptions.RequestException as e:   
+    print(e)
+ if mydef =='':
+    print('value is null')
+else:
+    f2 = pd.read_json(mydef, orient="{index -> {column -> value}}")    
+    f3 = json.loads(mydef)
+    name={}
+    Ids = []
+    Names = []
+    for d1 in f3['records']:
+        Ids.append(d1.get('Id')) 
+        Names.append(d1.get('Name'))
+    name.update({'Id' : Ids})
+    name.update({'Name': Names})
+    df = pd.DataFrame(name)
+    df.to_csv('FromSFDC.csv')
+    df_csv = pd.read_csv('FromSFDC')
+    print(df_csv.head)   
